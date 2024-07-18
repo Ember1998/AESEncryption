@@ -1,0 +1,13 @@
+{
+  "profiles": {
+    "FunctionApp1": {
+      "commandName": "Project",
+      "commandLineArgs": "--port 7231",
+      "launchBrowser": false,
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "ENCRYPTION_KEY": "kGR9dkH-j{i'HMA[#8M4.$,a*%8p-}>&"
+      }
+    }
+  }
+}
