@@ -29,35 +29,45 @@ namespace EncryptFiles
         public static async Task<IActionResult> Encrypt([HttpTrigger(AuthorizationLevel.Function, "post", Route = "encrypt")] HttpRequest req,
             ILogger log)    
         {
-
-            string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
-            dynamic data = JsonConvert.DeserializeObject(requestBody);
-            //var file = paramData.File;
-            connectionString = data.connectionString;
-            FilePath = data.FilePath;
-            if (string.IsNullOrEmpty(connectionString))
+            try
             {
-                return new BadRequestObjectResult("Connection String is not provided");
+                string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
+                dynamic data = JsonConvert.DeserializeObject(requestBody);
+                //var file = paramData.File;
+                connectionString = data.connectionString;
+                FilePath = data.FilePath;
+                if (string.IsNullOrEmpty(connectionString))
+                {
+                    return new BadRequestObjectResult("Connection String is not provided");
+                }
+                var file = await GetBlobContentViaLinkAsync(FilePath);
+
+                string encryptionKey = data.encryptionKey;
+
+                if (string.IsNullOrEmpty(encryptionKey))
+                {
+                    return new BadRequestObjectResult("ENCRYPTION_KEY environment variable is not set.");
+                }
+
+                byte[] encryptedContent = Encrypt(file, encryptionKey);
+                await CreateFile(encryptedContent, FilePath);
+                // return new FileContentResult(encryptedContent, "application/octet-stream");
+
+                var desc = new ReturnFileResult
+                {
+                    File = new FileContentResult(encryptedContent, "application/octet-stream"),
+                    FileName = Path.GetFileName(FilePath)
+                };
+                return new OkObjectResult(desc);
             }
-            var file = await GetBlobContentViaLinkAsync(FilePath);
-
-            string encryptionKey = data.encryptionKey;
-
-            if (string.IsNullOrEmpty(encryptionKey))
+            catch (Exception ex)
             {
-                return new BadRequestObjectResult("ENCRYPTION_KEY environment variable is not set.");
+                return new BadRequestObjectResult(ex.InnerException);
+
+                throw;
             }
 
-            byte[] encryptedContent = Encrypt(file, encryptionKey);
-            await CreateFile(encryptedContent, FilePath);
-            // return new FileContentResult(encryptedContent, "application/octet-stream");
-
-            var desc = new ReturnFileResult
-            {
-                File = new FileContentResult(encryptedContent, "application/octet-stream"),
-                FileName = Path.GetFileName(FilePath)
-            };
-            return new OkObjectResult(desc);
+            
         }
 
         private static byte[] Encrypt(byte[] data, string key)
